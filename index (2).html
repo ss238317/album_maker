@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>미니 CD 앨범 커버 메이커</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React & ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- jsPDF Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+    <style>
+        body { font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif; background-color: #f8fafc; }
+        @media print { .no-print { display: none !important; } }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useRef, useEffect } = React;
+
+        // 외부 라이브러리 의존성을 없애기 위해 아이콘을 직접 SVG로 정의합니다.
+        const Icon = ({ path, size = 24, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} dangerouslySetInnerHTML={{ __html: path }} />
+        );
+        const UploadIcon = (p) => <Icon {...p} path='<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>' />;
+        const ImageIcon = (p) => <Icon {...p} path='<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>' />;
+        const LoaderIcon = (p) => <Icon {...p} path='<line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/>' />;
+        const SparklesIcon = (p) => <Icon {...p} path='<path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>' />;
+        const AlertIcon = (p) => <Icon {...p} path='<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>' />;
+        const CheckIcon = (p) => <Icon {...p} path='<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>' />;
+        const PaletteIcon = (p) => <Icon {...p} path='<circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/>' />;
+        const PrinterIcon = (p) => <Icon {...p} path='<polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>' />;
+        const TrashIcon = (p) => <Icon {...p} path='<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/>' />;
+        const PlusIcon = (p) => <Icon {...p} path='<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>' />;
+        const InfoIcon = (p) => <Icon {...p} path='<circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>' />;
+        const XIcon = (p) => <Icon {...p} path='<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>' />;
+        const KeyIcon = (p) => <Icon {...p} path='<path d="m15.5 7.5 2.3 2.3a1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 0 0 0-1.4L19 4"/><path d="m21 2-9.6 9.6"/><circle cx="7.5" cy="15.5" r="5.5"/>' />;
+
+        const CONCEPT_DATA = {
+            fairy: {
+                label: '신비롭고 몽환적인 (요정/판타지)',
+                effects: 'soft glow, dreamy haze, sparkling light, iridescent, translucent glass',
+                colors: [
+                '라벤더 #B8A1E3 & 펄 블루 #B8D8F8', '연보라 #C8B6FF & 핑크 #FFB7D5', '민트 #A8E6CF & 라일락 #CDB4DB', 
+                '스카이블루 #A2D2FF & 화이트 #F8F9FA', '퍼플 #9D79BC & 실버 #D9D9E3', '로즈핑크 #E8A0BF & 라벤더 #BFA2DB', 
+                '딥블루 #4169A1 & 퍼플 #9B72CF', '아이스블루 #C5E8F7 & 핑크 #F6C1D1', '피치 #FFD1BA & 라일락 #D5C6E0', 
+                '네이비 #252A5A & 홀로그램 퍼플 #B388EB'
+                ],
+                bgs: ['별이 반짝이는 밤하늘', '안개 낀 호숫가', '신비로운 숲', '구름 위 천공', '은하수 우주', '꽃이 핀 정원', '달빛 비치는 바다', '얼음 궁전', '노을진 하늘', '몽환적인 우주'],
+                objs: ['초승달, 별가루, 수정', '백조, 꽃잎, 거울', '나비, 버섯, 반딧불', '깃털, 날개, 별', '행성, 크리스털, 별자리', '장미, 리본, 진주', '달, 물결, 유리구슬', '눈꽃, 수정, 왕관', '구름, 별, 비눗방울', '홀로그램 조각, 별가루, 문']
+            },
+            teen: {
+                label: '청량하고 밝은 (하이틴/유스)',
+                effects: 'bright sunlight, water splash, glossy, lens flare, clear blue sky',
+                colors: [
+                '스카이블루 #70CFFF & 화이트 #FFFFFF', '아쿠아 #5DE2E7 & 레몬 #FFF275', '민트 #98F5E1 & 코랄 #FF9B9B', 
+                '블루 #4EA8DE & 옐로우 #FFD166', '라이트그린 #B5E48C & 하늘색 #90E0EF', '코발트블루 #4361EE & 화이트 #F8F9FA', 
+                '핑크 #FFAFCC & 하늘색 #A2D2FF', '오렌지 #FFB703 & 블루 #8ECAE6', '청록 #00B4D8 & 라임 #CAFFBF', 
+                '라이트블루 #CAF0F8 & 네이비 #023E8A'
+                ],
+                bgs: ['파란 하늘과 구름', '여름 바다', '수영장', '해변', '초원', '운동장', '학교 복도', '햇빛 가득한 도시', '놀이공원', '바닷가 도로'],
+                objs: ['비행기, 종이비행기', '튜브, 물방울, 조개', '선글라스, 음료', '서핑보드, 야자수', '데이지, 자전거', '농구공, 스니커즈', '폴라로이드, 스티커', '카메라, 이어폰', '풍선, 아이스크림', '컨버터블카, 구름']
+            },
+            crush: {
+                label: '강렬하고 힙한 (걸크러시/스트리트)',
+                effects: 'metallic, chrome, flash photography, neon lighting, high contrast',
+                colors: [
+                '블랙 #111111 & 핫핑크 #FF2E88', '레드 #D90429 & 블랙 #000000', '실버 #C0C0C0 & 블랙 #1B1B1B', 
+                '퍼플 #7209B7 & 블랙 #090909', '라임 #B9F227 & 블랙 #161616', '코발트 #0047AB & 실버 #D7D7D7', 
+                '오렌지 #FF5A1F & 차콜 #252525', '와인 #7F1D1D & 블랙 #121212', '핫핑크 #F72585 & 일렉트릭블루 #4361EE', 
+                '화이트 #F5F5F5 & 블랙 #080808'
+                ],
+                bgs: ['네온 골목', '지하주차장', '메탈 스튜디오', '네온 클럽', '스트리트 골목', '산업용 창고', '도시 야경', '붉은 조명 무대', '네온 시티', '미니멀 스튜디오'],
+                objs: ['그래피티, 체인', '스포츠카, 스피커', '크롬 오브젝트', '레이저, 미러볼', '스케이트보드', '메탈 체인, 철제 프레임', '오토바이, 도로표지판', '가죽, 장미', 'LED 사인', '선글라스, 마이크']
+            },
+            y2k: {
+                label: 'Y2K 레트로 (뉴트로/키치)',
+                effects: 'holographic, glossy plastic, chrome typography, fisheye lens, sticker collage',
+                colors: [
+                '베이비핑크 #FFB3D9 & 실버 #C9CED6', '핫핑크 #FF5DB1 & 아쿠아 #70E4EF', '라임 #C7F000 & 퍼플 #9B5DE5', 
+                '블루 #4CC9F0 & 핑크 #F72585', '레몬 #FFE66D & 핑크 #FF8FAB', '실버 #D9D9D9 & 퍼플 #B388EB', 
+                '오렌지 #FF9F1C & 아쿠아 #2EC4B6', '핑크 #FFC8DD & 라임 #B9FBC0', '파스텔블루 #BDE0FE & 옐로우 #FFF3B0', 
+                '핫핑크 #FF006E & 실버 #ADB5BD'
+                ],
+                bgs: ['메탈릭 스튜디오', 'Y2K 사이버 공간', '게임 화면', '레트로 인터넷 화면', '키치한 방', '홀로그램 배경', '2000년대 잡지 화보', '스티커북', '레트로 침실', '미래형 쇼핑몰'],
+                objs: ['CD, MP3 플레이어', '플립폰, 별 스티커', '픽셀 아이콘', '하트, 커서', '토이카메라, 인형', 'CD, 크롬 하트', '스티커, 별', '체리, 리본', 'CRT 모니터, 키보드', '크롬 글자, 별']
+            },
+            dark: {
+                label: '어둡고 치명적인 (사이버펑크/뱀파이어)',
+                effects: 'cinematic shadow, red moonlight, fog, neon glow, wet pavement, dramatic backlight',
+                colors: [
+                '블랙 #090909 & 딥레드 #8B0000', '버건디 #660708 & 블랙 #161A1D', '블랙 #03071E & 네온퍼플 #7209B7', 
+                '네이비 #03045E & 레드 #D00000', '차콜 #212529 & 실버 #ADB5BD', '와인 #590D22 & 퍼플 #800F2F', 
+                '블랙 #000000 & 네온블루 #00E5FF', '퍼플 #3C096C & 레드 #9D0208', '블랙 #111111 & 에메랄드 #006466', 
+                '네이비 #101820 & 핫핑크 #FF006E'
+                ],
+                bgs: ['고딕 성', '오래된 저택', '사이버펑크 도시', '밤거리', '폐허가 된 성당', '붉은 달 아래 숲', '미래도시', '어두운 궁전', '안개 낀 숲', '네온 골목'],
+                objs: ['장미, 촛불', '샹들리에, 거울', '홀로그램, 전선', '네온사인, 비', '십자가 장식, 촛대', '까마귀, 장미', 'LED, 홀로그램 화면', '왕관, 보석', '뱀, 수정', '네온 튜브, 오토바이']
+            }
+        };
+
+        function App() {
+            // API Key State (GitHub Pages 호스팅용)
+            const [apiKey, setApiKey] = useState('');
+
+            // Form State
+            const [photo, setPhoto] = useState(null);
+            const [photoPreview, setPhotoPreview] = useState(null);
+            const [albumName, setAlbumName] = useState('');
+            const [groupType, setGroupType] = useState('solo');
+            const [selectedVibe, setSelectedVibe] = useState('fairy');
+            
+            // Dependent states
+            const [selectedColor, setSelectedColor] = useState(CONCEPT_DATA.fairy.colors[0]);
+            const [selectedBg, setSelectedBg] = useState(CONCEPT_DATA.fairy.bgs[0]);
+            const [selectedObj, setSelectedObj] = useState(CONCEPT_DATA.fairy.objs[0]);
+
+            // Generation State
+            const [isGenerating, setIsGenerating] = useState(false);
+            const [generatedImage, setGeneratedImage] = useState(null);
+            const [errorMsg, setErrorMsg] = useState(null);
+            const fileInputRef = useRef(null);
+
+            // Print Feature States
+            const [backColor, setBackColor] = useState('#252A5A');
+            const [printList, setPrintList] = useState([]);
+            const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+
+            useEffect(() => {
+                const data = CONCEPT_DATA[selectedVibe];
+                setSelectedColor(data.colors[0]);
+                setSelectedBg(data.bgs[0]);
+                setSelectedObj(data.objs[0]);
+            }, [selectedVibe]);
+
+            const addToPrintList = () => {
+                if (!generatedImage) return;
+                if (printList.length >= 10) {
+                    alert('A4 한 장에 최대 10개까지만 추가할 수 있습니다.');
+                    return;
+                }
+                setPrintList(prev => [...prev, {
+                    id: Date.now(),
+                    imageUrl: generatedImage,
+                    albumName: albumName || 'ALBUM',
+                    backColor: backColor
+                }]);
+            };
+
+            const clearPrintList = () => {
+                if(window.confirm('추가된 도안을 모두 삭제하시겠습니까?')) setPrintList([]);
+            };
+
+            const removePrintItem = (idToRemove) => {
+                setPrintList(prev => prev.filter(item => item.id !== idToRemove));
+            };
+
+            // HEX to RGB 변환 헬퍼
+            const hexToRgb = (hex) => {
+                const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+                return result ? { r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16) } 
+                              : { r: 0, g: 0, b: 0 };
+            };
+
+            const saveAsPdf = async () => {
+                if (printList.length === 0) return;
+                setIsGeneratingPdf(true);
+                
+                try {
+                    // jsPDF 초기화: 세로(p), 밀리미터(mm), A4
+                    const { jsPDF } = window.jspdf;
+                    const pdf = new jsPDF('p', 'mm', 'a4');
+                    
+                    const itemW = 80; // 전체 가로 80mm
+                    const itemH = 37; // 전체 세로 37mm
+                    const halfW = 40; // 절반 40mm
+                    const gapX = 10;  // 간격
+                    const gapY = 10;  
+                    
+                    // A4 중앙 정렬 계산 (2열 배치)
+                    const startX = (210 - (itemW * 2 + gapX)) / 2; 
+                    const startY = 20;
+
+                    for (let i = 0; i < printList.length; i++) {
+                        const item = printList[i];
+                        const col = i % 2;
+                        const row = Math.floor(i / 2);
+                        const x = startX + col * (itemW + gapX);
+                        const y = startY + row * (itemH + gapY);
+
+                        // 1. 왼쪽: 앞면 이미지 (40x37)
+                        try {
+                            pdf.addImage(item.imageUrl, 'PNG', x, y, halfW, itemH);
+                        } catch (e) {
+                            console.error('이미지 삽입 오류:', e);
+                            pdf.setFillColor(200, 200, 200);
+                            pdf.rect(x, y, halfW, itemH, 'F');
+                        }
+
+                        // 2. 오른쪽: 내지 배경색 (40x37)
+                        const rgb = hexToRgb(item.backColor);
+                        pdf.setFillColor(rgb.r, rgb.g, rgb.b);
+                        pdf.rect(x + halfW, y, halfW, itemH, 'F');
+
+                        // 3. 전체 칼선 (외곽선 80x37)
+                        pdf.setDrawColor(0);
+                        pdf.setLineWidth(0.2);
+                        pdf.rect(x, y, itemW, itemH, 'S');
+
+                        // 4. 중앙 접지선 (점선)
+                        pdf.setDrawColor(150);
+                        pdf.setLineDashPattern([1, 1], 0);
+                        pdf.line(x + halfW, y, x + halfW, y + itemH);
+                        pdf.setLineDashPattern([], 0);
+
+                        // 5. 내지 텍스트 (90도 회전)
+                        const isLight = (rgb.r * 0.299 + rgb.g * 0.587 + rgb.b * 0.114) > 186;
+                        pdf.setTextColor(isLight ? 80 : 255);
+                        pdf.setFontSize(8);
+                        
+                        const text = item.albumName.toUpperCase() || 'ALBUM';
+                        const textWidth = pdf.getTextWidth(text);
+                        // 오른쪽 40mm 영역의 정중앙에 텍스트가 회전되어 들어가도록 좌표 세밀 보정
+                        pdf.text(text, x + halfW + (halfW / 2) - 2, y + (itemH / 2) + (textWidth / 2), { angle: 90 });
+                    }
+
+                    pdf.save('미니_CD_인쇄도안.pdf');
+                    
+                } catch (error) {
+                    console.error('PDF Error:', error);
+                    alert('PDF 생성 중 오류가 발생했습니다.');
+                } finally {
+                    setIsGeneratingPdf(false);
+                }
+            };
+
+            const handlePhotoUpload = (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    if (!file.type.startsWith('image/')) { setErrorMsg('이미지 파일만 업로드 가능합니다.'); return; }
+                    setPhoto(file);
+                    const reader = new FileReader();
+                    reader.onloadend = () => setPhotoPreview(reader.result);
+                    reader.readAsDataURL(file);
+                    setErrorMsg(null);
+                }
+            };
+
+            const handleDragOver = (e) => e.preventDefault();
+            const handleDrop = (e) => {
+                e.preventDefault();
+                if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                    const file = e.dataTransfer.files[0];
+                    if (file.type.startsWith('image/')) {
+                        setPhoto(file);
+                        const reader = new FileReader();
+                        reader.onloadend = () => setPhotoPreview(reader.result);
+                        reader.readAsDataURL(file);
+                        setErrorMsg(null);
+                    }
+                }
+            };
+
+            const generateImage = async () => {
+                if (!apiKey.trim()) {
+                    setErrorMsg('상단에 Gemini API Key를 입력해주세요.');
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    return;
+                }
+                if (!albumName.trim()) {
+                    setErrorMsg('앨범에 들어갈 영어 이름을 입력해주세요.');
+                    return;
+                }
+
+                setIsGenerating(true);
+                setErrorMsg(null);
+                setGeneratedImage(null);
+
+                try {
+                    const vibeInfo = CONCEPT_DATA[selectedVibe];
+                    const basePrompt = photo 
+                        ? `첨부한 사진 속 인물들의 특징을 모티브로 하여 1:1 정사각형 비율의 K-pop ${groupType === 'solo' ? '솔로' : '아이돌 그룹'} 앨범 커버 화보를 만들어줘.`
+                        : `1:1 정사각형 비율의 K-pop ${groupType === 'solo' ? '솔로' : '아이돌 그룹'} 앨범 커버 화보를 만들어줘.`;
+                    
+                    const conceptSection = `[나만의 앨범 콘셉트]\n- 메인 분위기: ${vibeInfo.label.split('(')[0].trim()} 느낌\n- 메인 색상 (2가지): ${selectedColor.replace(/#[0-9A-Fa-f]{6}/g, '').trim()}\n- 배경 장소: ${selectedBg}\n- 추가 장식(오브제): ${selectedObj}`;
+                    const styleSection = `[이미지 스타일 및 필수 조건]\n- 실제 아이돌의 새 앨범 자켓처럼 최고급 화질의 프로페셔널한 사진(Professional studio photography, 8k resolution, cinematic lighting, ${vibeInfo.effects}) 느낌으로 만들어줘.`;
+                    const placementRule = groupType === 'solo' 
+                        ? '- 인물은 중앙에 예쁘게 배치해 줘.' 
+                        : '- 사진에 있는 여러 명의 멤버 전원이 구도 안에 조화롭게 잘 배치되도록 해줘.';
+                    const textRule = groupType === 'solo'
+                        ? `- 텍스트 삽입: 이미지 하단 중앙에 세련된 폰트로 "${albumName.toUpperCase()}" 라는 글자를 정확하게 적어줘. 의미 없는 다른 글자는 절대 넣지 마.`
+                        : `- 텍스트 삽입: 이미지 상단 중앙에 멋진 폰트로 "${albumName.toUpperCase()}" 라는 글자를 정확하게 적어줘. 의미 없는 다른 글자는 절대 넣지 마.`;
+
+                    const finalPrompt = `${basePrompt}\n\n${conceptSection}\n\n${styleSection}\n${placementRule}\n${textRule}`;
+                    const parts = [{ text: finalPrompt }];
+
+                    if (photoPreview) {
+                        const base64Data = photoPreview.split(',')[1];
+                        const mimeType = photoPreview.split(';')[0].split(':')[1];
+                        parts.push({ inlineData: { mimeType, data: base64Data } });
+                    }
+
+                    const payload = {
+                        contents: [{ role: 'user', parts }],
+                        generationConfig: { responseModalities: ['IMAGE'], imageConfig: { aspectRatio: "1:1" } },
+                    };
+
+                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image:generateContent?key=${apiKey}`;
+
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) throw new Error(`API Request failed: ${response.status}`);
+                    
+                    const result = await response.json();
+                    const part = result?.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
+                    
+                    if (!part) throw new Error('이미지 생성에 실패했습니다. 프롬프트가 안전 정책에 위배되었을 수 있습니다.');
+                    
+                    setGeneratedImage(`data:${part.inlineData.mimeType};base64,${part.inlineData.data}`);
+
+                } catch (error) {
+                    setErrorMsg(error.message || '오류가 발생했습니다. 다시 시도해주세요.');
+                } finally {
+                    setIsGenerating(false);
+                }
+            };
+
+            return (
+                <div className="min-h-screen font-sans text-slate-800 pb-20">
+                    {/* API Key Input Section (GitHub Pages 배포용) */}
+                    <div className="bg-slate-800 text-white px-4 py-3 text-sm flex justify-center items-center gap-3 no-print">
+                        <KeyIcon size={16} className="text-yellow-400" />
+                        <span className="font-medium">Gemini API Key:</span>
+                        <input 
+                            type="password" 
+                            value={apiKey} 
+                            onChange={(e) => setApiKey(e.target.value)}
+                            placeholder="AI-..." 
+                            className="px-3 py-1 rounded bg-slate-700 border border-slate-600 text-white outline-none focus:border-pink-400 w-64"
+                        />
+                        <a href="https://aistudio.google.com/app/apikey" target="_blank" className="text-pink-400 hover:underline text-xs">키 발급받기</a>
+                    </div>
+
+                    <div className="p-4 md:p-8 no-print">
+                        <header className="text-center mb-8 pt-4">
+                            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-pink-500 text-white shadow-lg mb-4">
+                                <Icon path='<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="2"/>' size={24} />
+                            </div>
+                            <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-2">
+                                미니 CD <span className="bg-clip-text text-transparent bg-gradient-to-r from-purple-500 to-pink-500">앨범 커버</span> 메이커
+                            </h1>
+                            <p className="text-slate-500 font-medium">좋아하는 사진과 컨셉을 고르면 AI가 앨범 자켓을 만들어줘요!</p>
+                        </header>
+
+                        <main className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                            {/* 설정 패널 */}
+                            <div className="lg:col-span-5 bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8">
+                                <div className="flex items-center gap-2 mb-6 border-b border-slate-100 pb-4">
+                                    <span className="text-indigo-500"><Icon path='<path d="M12 2v20"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>' size={20} /></span>
+                                    <h2 className="text-lg font-bold">컨셉 설정하기</h2>
+                                </div>
+
+                                <div className="space-y-6">
+                                    <div className="space-y-2">
+                                        <label className="block text-sm font-bold text-slate-700">1. 참고할 가이드 사진 (선택)</label>
+                                        <div 
+                                            onClick={() => fileInputRef.current?.click()}
+                                            onDragOver={handleDragOver}
+                                            onDrop={handleDrop}
+                                            className={`relative border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors ${photoPreview ? 'border-indigo-300 bg-indigo-50' : 'border-slate-300 hover:border-indigo-400 bg-slate-50 hover:bg-slate-100'}`}
+                                        >
+                                            <input type="file" className="hidden" ref={fileInputRef} onChange={handlePhotoUpload} accept="image/*" />
+                                            {photoPreview ? (
+                                            <div className="flex flex-col items-center">
+                                                <div className="w-16 h-16 rounded-full overflow-hidden mb-2 border-2 border-white shadow-sm">
+                                                    <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
+                                                </div>
+                                                <span className="text-sm font-medium text-indigo-600 flex items-center gap-1">
+                                                    <CheckIcon size={16} /> 사진이 첨부되었습니다
+                                                </span>
+                                            </div>
+                                            ) : (
+                                            <div className="flex flex-col items-center text-slate-500">
+                                                <UploadIcon size={32} className="mb-2 text-slate-400" />
+                                                <span className="text-sm font-medium">클릭하거나 사진을 드래그하세요</span>
+                                            </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <label className="block text-sm font-bold text-slate-700">2. 앨범에 들어갈 이름 (영어 추천)</label>
+                                        <input type="text" value={albumName} onChange={(e) => setAlbumName(e.target.value)} placeholder="예: MINJI, JUNGKOOK, NEWJEANS" className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none transition-all uppercase placeholder:normal-case font-medium" />
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <label className="block text-sm font-bold text-slate-700">3. 인원 구성 (솔로 / 그룹)</label>
+                                        <div className="flex gap-4">
+                                            <label className="flex items-center gap-2 cursor-pointer">
+                                            <input type="radio" value="solo" checked={groupType === 'solo'} onChange={() => setGroupType('solo')} className="w-4 h-4 text-blue-600" />
+                                            <span className="text-sm font-medium text-slate-700">솔로 (1인)</span>
+                                            </label>
+                                            <label className="flex items-center gap-2 cursor-pointer">
+                                            <input type="radio" value="group" checked={groupType === 'group'} onChange={() => setGroupType('group')} className="w-4 h-4 text-blue-600" />
+                                            <span className="text-sm font-medium text-slate-700">그룹 (다인원)</span>
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <label className="block text-sm font-bold text-slate-700">4. 앨범 분위기</label>
+                                        <select value={selectedVibe} onChange={(e) => setSelectedVibe(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-300 bg-white focus:ring-2 focus:ring-indigo-500 outline-none font-medium">
+                                            {Object.entries(CONCEPT_DATA).map(([key, data]) => <option key={key} value={key}>{data.label}</option>)}
+                                        </select>
+                                    </div>
+
+                                    <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-4">
+                                        <div className="space-y-2">
+                                            <label className="block text-sm font-bold text-slate-700">5. 메인 컬러 (2가지)</label>
+                                            <select value={selectedColor} onChange={(e) => setSelectedColor(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                                                {CONCEPT_DATA[selectedVibe].colors.map(color => <option key={color} value={color}>{color}</option>)}
+                                            </select>
+                                        </div>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <label className="block text-sm font-bold text-slate-700">6. 배경 장소</label>
+                                                <select value={selectedBg} onChange={(e) => setSelectedBg(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                                                    {CONCEPT_DATA[selectedVibe].bgs.map(bg => <option key={bg} value={bg}>{bg}</option>)}
+                                                </select>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="block text-sm font-bold text-slate-700">7. 추가 장식(오브제)</label>
+                                                <select value={selectedObj} onChange={(e) => setSelectedObj(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                                                    {CONCEPT_DATA[selectedVibe].objs.map(obj => <option key={obj} value={obj}>{obj}</option>)}
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {errorMsg && (
+                                    <div className="flex items-center gap-2 text-rose-600 bg-rose-50 p-3 rounded-lg text-sm font-medium">
+                                        <AlertIcon size={16} />{errorMsg}
+                                    </div>
+                                    )}
+
+                                    <button 
+                                        onClick={generateImage} disabled={isGenerating}
+                                        className="w-full py-4 rounded-xl text-white font-bold text-lg bg-gradient-to-r from-purple-500 to-pink-500 hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-md"
+                                    >
+                                        {isGenerating ? <><LoaderIcon className="animate-spin" size={20}/> 커버 생성 중...</> : <><SparklesIcon size={20}/> 앨범 커버 AI로 생성하기</>}
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* 생성 결과 패널 */}
+                            <div className="lg:col-span-7 bg-white rounded-2xl shadow-sm border border-slate-200 min-h-[600px] flex items-center justify-center p-8 relative">
+                                <div className="relative z-10 w-full max-w-md mx-auto flex flex-col items-center text-center">
+                                    {isGenerating ? (
+                                    <div className="flex flex-col items-center space-y-4">
+                                        <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+                                            <LoaderIcon size={40} className="text-pink-500 animate-spin" />
+                                        </div>
+                                        <h3 className="text-xl font-bold text-slate-800">AI가 앨범 자켓을 만들고 있어요</h3>
+                                        <p className="text-slate-500 text-sm">최대 20초 정도 소요될 수 있습니다. 잠시만 기다려주세요.</p>
+                                    </div>
+                                    ) : generatedImage ? (
+                                    <div className="w-full flex flex-col items-center">
+                                        <div className="relative aspect-square w-full shadow-2xl rounded-md overflow-hidden border border-slate-200 bg-white mb-6">
+                                            <img src={generatedImage} alt="Album Cover" className="w-full h-full object-cover" />
+                                        </div>
+                                        
+                                        <div className="flex flex-col items-center gap-4 bg-slate-50 w-full rounded-2xl p-6 border border-slate-100">
+                                            <div className="flex items-center gap-3 bg-white px-5 py-3 rounded-full border border-slate-200 shadow-sm w-max">
+                                                <span className="text-sm font-bold text-slate-700 flex items-center gap-2">
+                                                    <PaletteIcon size={16} className="text-pink-500" /> CD 내지 색상:
+                                                </span>
+                                                <div className="relative w-8 h-8 rounded border-2 border-slate-300 cursor-pointer shadow-sm overflow-hidden bg-slate-200">
+                                                    <input type="color" value={backColor} onChange={(e) => setBackColor(e.target.value)} className="absolute -top-2 -left-2 w-12 h-12 cursor-pointer border-0 p-0" />
+                                                </div>
+                                            </div>
+                                            
+                                            <div className="flex w-full gap-2 mt-2">
+                                                <button onClick={() => { const link = document.createElement('a'); link.href = generatedImage; link.download = `${albumName}_cover.png`; link.click(); }} className="flex-1 py-3 bg-slate-700 hover:bg-slate-800 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2">
+                                                    <UploadIcon size={16} className="rotate-180" /> 이미지 저장
+                                                </button>
+                                                <button onClick={addToPrintList} disabled={printList.length >= 10} className="flex-1 py-3 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-50">
+                                                    <PlusIcon size={16} /> 인쇄 목록 추가
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    ) : (
+                                    <div className="text-slate-400 flex flex-col items-center gap-4">
+                                        <div className="w-32 h-32 bg-slate-50 rounded-2xl flex items-center justify-center border-2 border-dashed border-slate-300">
+                                            <ImageIcon size={48} className="text-slate-300" />
+                                        </div>
+                                        <p className="text-sm font-medium">왼쪽에서 옵션을 선택하고 생성 버튼을 누르면<br/>여기에 앨범 커버가 나타납니다.</p>
+                                    </div>
+                                    )}
+                                </div>
+                            </div>
+                        </main>
+                        
+                        {/* 컬렉션 및 PDF 섹션 */}
+                        <section className="max-w-6xl mx-auto mt-12 bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8 no-print">
+                            <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-slate-100 pb-4 mb-6 gap-4">
+                                <div className="flex items-center gap-2">
+                                    <PrinterIcon size={24} className="text-indigo-500" />
+                                    <h2 className="text-xl font-bold text-slate-800">인쇄용 도안 컬렉션</h2>
+                                </div>
+                                <div className="flex gap-2 w-full md:w-auto">
+                                    <button onClick={clearPrintList} disabled={printList.length === 0} className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-bold flex items-center gap-2 disabled:opacity-50">
+                                        <TrashIcon size={16} /> 전체 삭제
+                                    </button>
+                                    <button onClick={saveAsPdf} disabled={printList.length === 0 || isGeneratingPdf} className="px-6 py-2 bg-[#6b4eff] hover:bg-indigo-600 text-white rounded-lg text-sm font-bold flex items-center gap-2 disabled:opacity-50 shadow-sm">
+                                        {isGeneratingPdf ? <LoaderIcon size={16} className="animate-spin" /> : <PrinterIcon size={16} />} 
+                                        {isGeneratingPdf ? 'PDF 생성 중...' : 'A4 PDF로 저장하기'}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <p className="text-sm text-slate-400 mb-6 font-medium">
+                                추가된 이미지는 미니 CD 케이스 규격(80x37mm)에 맞춰 배치됩니다. 한 장의 A4 용지에 최대 10개까지 인쇄 가능합니다. <span className="text-indigo-500 font-bold">({printList.length}/10)</span>
+                            </p>
+
+                            {printList.length === 0 ? (
+                            <div className="py-16 flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-xl bg-slate-50 text-slate-400 gap-3">
+                                <ImageIcon size={48} className="opacity-50" />
+                                <p className="text-sm font-medium text-center">아직 추가된 이미지가 없습니다.</p>
+                            </div>
+                            ) : (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                                {printList.map((item, idx) => (
+                                <div key={item.id} className="relative flex flex-col items-center">
+                                    <span className="absolute -top-3 -left-3 w-8 h-8 bg-slate-800 text-white rounded-full flex items-center justify-center text-sm font-bold z-10">{idx + 1}</span>
+                                    <button onClick={() => removePrintItem(item.id)} className="absolute -top-3 -right-3 w-8 h-8 bg-slate-700 text-white hover:bg-rose-500 rounded-full flex items-center justify-center z-10 transition-colors">
+                                        <XIcon size={14} />
+                                    </button>
+                                    
+                                    <div className="flex border border-slate-300 w-full max-w-[320px] aspect-[80/37] shadow-sm overflow-hidden bg-white">
+                                        {/* 앞면 (왼쪽) */}
+                                        <div className="w-1/2 h-full bg-slate-100 border-r border-dashed border-slate-400">
+                                            <img src={item.imageUrl} className="w-full h-full object-cover block" />
+                                        </div>
+                                        {/* 내지 (오른쪽) */}
+                                        <div className="w-1/2 h-full flex items-center justify-center relative" style={{ backgroundColor: item.backColor }}>
+                                            <span className="absolute whitespace-nowrap transform rotate-90 text-[11px] tracking-widest text-slate-800 font-bold mix-blend-multiply opacity-80 uppercase">
+                                                {item.albumName}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                                ))}
+                            </div>
+                            )}
+                        </section>
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
